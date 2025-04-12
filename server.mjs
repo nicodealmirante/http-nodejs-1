@@ -1,6 +1,6 @@
-const express = require('express');
-const { ethers } = require('ethers');
-const dotenv = require('dotenv');
+import express from 'express';
+import dotenv from 'dotenv';
+import { ethers } from 'ethers';
 
 dotenv.config();
 
