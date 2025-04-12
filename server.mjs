@@ -1,40 +1,49 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { ethers } from 'ethers';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
-
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-const provider = new ethers.JsonRpcProvider(process.env.PROVIDER_URL);
-const walletAddress = process.env.WALLET;
-const minAmount = process.env.MIN_AMOUNT;  // El monto mínimo de WLD que debe recibir
+// __dirname simulado para ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Ruta para verificar si se recibió un pago
-app.get('/check-payment', async (req, res) => {
+// Dirección y red a chequear
+const RECEIVER = '0x1f62e7890d5db2c94c280547876b050f5d1816c5';
+const REQUIRED_AMOUNT = ethers.utils.parseUnits('1', 18); // 1 WLD
+
+const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL);
+
+// 🔒 Validación simple por address
+app.get('/validate/:wallet', async (req, res) => {
+  const wallet = req.params.wallet.toLowerCase();
   try {
-    const balance = await provider.getBalance(walletAddress);
-    
-    if (balance.gte(minAmount)) {
-      return res.status(200).json({ success: true, message: 'Pago recibido, puedes proceder con la descarga.' });
+    const history = await provider.getHistory(wallet);
+    const valid = history.some(tx =>
+      tx.to?.toLowerCase() === RECEIVER.toLowerCase() &&
+      tx.value.gte(REQUIRED_AMOUNT)
+    );
+
+    if (valid) {
+      res.json({ success: true, download: `${process.env.HOST}/vieja.xapk` });
     } else {
-      return res.status(400).json({ success: false, message: 'El pago no es suficiente.' });
+      res.json({ success: false, reason: 'No se encontró el pago' });
     }
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: 'Error verificando el pago.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Ruta para enviar el enlace de descarga del XAPK después del pago
-app.get('/get-xapk', (req, res) => {
-  const xapkUrl = 'https://wld.com.ar/vieja.xapk'; // URL de tu archivo XAPK
-
-  res.status(200).json({ success: true, xapkUrl });
+// 📦 Servir archivo XAPK
+app.get('/vieja.xapk', (req, res) => {
+  const filePath = path.join(__dirname, 'vieja.xapk');
+  res.sendFile(filePath);
 });
 
-// Iniciar servidor
-app.listen(port, () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Backend activo en http://localhost:${PORT}`);
 });
