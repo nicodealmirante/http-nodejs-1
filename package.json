@@ -6,9 +6,7 @@
   "license": "MIT",
   "scripts": {
     "start": "node server.mjs"
-  }
-}
-{
+  },
   "dependencies": {
     "express": "^4.17.1",
     "ethers": "^5.0.0",
